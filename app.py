@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import hmac
 from datetime import date, timedelta
 
 import pandas as pd
@@ -10,7 +11,31 @@ import streamlit as st
 import database as db
 
 
+def require_login() -> None:
+    """Show a password gate when app_password is configured in Secrets."""
+    try:
+        configured_password = str(st.secrets.get("app_password", ""))
+    except Exception:
+        configured_password = ""
+
+    # No secret keeps the existing local-development experience unchanged.
+    if not configured_password or st.session_state.get("authenticated"):
+        return
+
+    st.title("🔒 轻账本")
+    st.caption("请输入访问密码")
+    password = st.text_input("访问密码", type="password", key="login_password")
+    if st.button("进入账本", type="primary", use_container_width=True):
+        if hmac.compare_digest(password, configured_password):
+            st.session_state["authenticated"] = True
+            st.session_state.pop("login_password", None)
+            st.rerun()
+        st.error("密码不正确，请重试。")
+    st.stop()
+
+
 st.set_page_config(page_title="我的记账本", page_icon="💰", layout="wide")
+require_login()
 db.init_db()
 
 st.markdown(
