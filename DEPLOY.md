@@ -20,6 +20,13 @@
 
 ## 做成真正可长期使用的线上账本
 
-下一步需要接入带持久化的云端数据库（例如 Supabase PostgreSQL），并把数据库连接信息放进 Secrets。这样数据不会随着应用重启丢失，也不会出现在 GitHub。
+项目已支持 Supabase PostgreSQL。项目建好后，在 Supabase 项目首页点击 **Connect**，复制其中的 **Session pooler** 连接字符串。把它仅保存到 Streamlit 的 Secrets 中：
+
+```toml
+app_password = "请换成一串只有你知道的密码"
+database_url = "postgresql://..."
+```
+
+不要把这两项写入代码、上传到 GitHub 或发到聊天中。应用检测到 `database_url` 后会自动建表并把新账目写入 Supabase；本地未配置时仍使用 SQLite。
 
 不要把密码、数据库地址或账本数据库文件提交到 GitHub。

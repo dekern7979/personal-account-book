@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import io
 import hmac
+import os
 from datetime import date, timedelta
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+
+try:
+    database_url = str(st.secrets.get("database_url", ""))
+except Exception:
+    database_url = ""
+if database_url:
+    os.environ["DATABASE_URL"] = database_url
 
 import database as db
 
