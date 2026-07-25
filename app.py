@@ -9,6 +9,10 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+# This must remain the first Streamlit command. Reading st.secrets also counts
+# as a Streamlit command on the installed Streamlit version.
+st.set_page_config(page_title="我的记账本", page_icon="💰", layout="wide")
+
 try:
     database_url = str(st.secrets.get("database_url", ""))
 except Exception:
@@ -42,7 +46,6 @@ def require_login() -> None:
     st.stop()
 
 
-st.set_page_config(page_title="我的记账本", page_icon="💰", layout="wide")
 require_login()
 db.init_db()
 
