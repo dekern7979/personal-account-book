@@ -50,21 +50,17 @@ require_login()
 db.init_db()
 
 
-TAB_PAGES = {
-    "home": "📊 首页概览",
-    "bills": "📑 账单列表",
-    "accounts": "💳 账户管理",
-    "stats": "📈 统计分析",
-    "add": "📊 首页概览",
-}
+PAGES = {"home": "📊 首页概览", "bills": "📑 账单列表", "accounts": "💳 账户管理", "stats": "📈 统计分析"}
+st.session_state.setdefault("page", PAGES["home"])
+st.session_state.setdefault("mobile_add_screen", False)
+st.session_state.setdefault("sidebar_navigation", st.session_state["page"])
 
 
-def requested_tab() -> str:
-    """Return the tab selected by the mobile bottom navigation."""
-    try:
-        return st.experimental_get_query_params().get("tab", ["home"])[0]
-    except Exception:
-        return "home"
+def navigate_to(page: str, add_screen: bool = False) -> None:
+    """Navigate without replacing the Streamlit browser session or login state."""
+    st.session_state["page"] = page
+    st.session_state["sidebar_navigation"] = page
+    st.session_state["mobile_add_screen"] = add_screen
 
 st.markdown(
     """
@@ -80,7 +76,7 @@ st.markdown(
     .mobile-amount { font-size: 28px; font-weight: 800; color: #51382b; }
     .mobile-nav { display: flex; justify-content: space-around; color: #9a6d52; font-size: 12px; padding-top: 12px; border-top: 1px solid #f0dfd4; margin-top: 18px; }
     .mobile-install-tip { color: #9b7258; font-size: 12px; text-align: center; margin: 18px 4px 8px; }
-    .mobile-bottom-nav {
+    .mobile-bottom-nav-anchor + [data-testid="stHorizontalBlock"] {
       position: fixed; z-index: 999; left: 0; right: 0; bottom: 0;
       display: flex; align-items: stretch; justify-content: space-around;
       min-height: calc(64px + env(safe-area-inset-bottom));
@@ -88,10 +84,11 @@ st.markdown(
       background: rgba(255,253,249,.94); border-top: 1px solid #efdfd3;
       box-shadow: 0 -8px 24px rgba(88,58,37,.08); backdrop-filter: blur(16px);
     }
-    .mobile-bottom-nav a { color: #8e6954; text-decoration: none; font-size: 11px; line-height: 1.25; text-align: center; min-width: 60px; padding: 4px 7px; border-radius: 14px; }
-    .mobile-bottom-nav a .tab-icon { display: block; font-size: 19px; margin-bottom: 2px; }
-    .mobile-bottom-nav a.active, .mobile-bottom-nav a.add { color: #a95738; background: #fff0e5; }
-    .mobile-bottom-nav a.add { margin-top: -21px; min-width: 62px; height: 62px; padding-top: 10px; border: 4px solid #fff8f1; border-radius: 22px; box-shadow: 0 5px 14px rgba(188,99,61,.20); }
+    .mobile-bottom-nav-anchor + [data-testid="stHorizontalBlock"] .stButton button {
+      width: 100%; min-height: 48px; padding: 2px 0; border: 0; background: transparent;
+      color: #8e6954; font-size: 11px; line-height: 1.25; box-shadow: none;
+    }
+    .mobile-bottom-nav-anchor + [data-testid="stHorizontalBlock"] .stButton button:hover { color: #a95738; background: #fff0e5; }
 
     /* iPhone Safari: full-width canvas, Dynamic Island and home-indicator safe areas. */
     @media (max-width: 899px) {
@@ -158,7 +155,7 @@ st.markdown(
       }
       [data-testid="stSidebar"] { border-right: 1px solid #e8ddd3; }
       [data-testid="stToolbar"] { visibility: hidden; }
-      .mobile-bottom-nav {
+      .mobile-bottom-nav-anchor + [data-testid="stHorizontalBlock"] {
         left: 50%; right: auto; bottom: 52px; width: 370px;
         min-height: 64px; padding: 8px 8px;
         transform: translateX(-50%); border-radius: 22px 22px 42px 42px;
@@ -205,7 +202,7 @@ def overview():
     expense = sum(row["amount_cents"] for row in rows if row["type"] == 1)
     balance = sum(row["balance_cents"] for row in db.account_balances())
 
-    is_add_screen = requested_tab() == "add"
+    is_add_screen = st.session_state.get("mobile_add_screen", False)
     st.markdown('<div class="mobile-shell">', unsafe_allow_html=True)
     if is_add_screen:
         st.markdown('<div class="mobile-hero"><div class="mobile-title">记一笔</div><div class="mobile-subtitle">随时记录，让每一笔都清楚</div></div>', unsafe_allow_html=True)
@@ -280,11 +277,13 @@ def accounts_page():
     with st.form("new_account"):
         c1, c2, c3, c4 = st.columns(4)
         name = c1.text_input("名称")
-        kind = c2.selectbox("类型", ["cash", "bank", "wechat", "alipay"], format_func=lambda value: {"cash": "现金", "bank": "银行卡", "wechat": "微信", "alipay": "支付宝"}[value])
+        kind_choice = c2.selectbox("类型", ["现金", "银行卡", "微信", "支付宝", "自定义类型"])
         opening = c3.number_input("初始余额（元）", min_value=0.0, step=100.0)
-        icon = c4.text_input("图标", "💰")
+        icon = c4.text_input("自定义图标", "💰")
+        custom_kind = st.text_input("自定义账户类型", placeholder="例如：信用卡、储蓄卡、公司账户") if kind_choice == "自定义类型" else ""
         if st.form_submit_button("添加", type="primary"):
             try:
+                kind = {"现金": "cash", "银行卡": "bank", "微信": "wechat", "支付宝": "alipay"}.get(kind_choice, custom_kind.strip() or "custom")
                 db.add_account(name, kind, round(opening * 100), icon)
                 st.rerun()
             except Exception as exc:
@@ -366,24 +365,23 @@ def settings():
 
 pages = {"📊 首页概览": overview, "📑 账单列表": bills, "💳 账户管理": accounts_page, "📈 统计分析": stats, "⚙️ 设置": settings}
 page_names = list(pages)
-tab = requested_tab()
-if tab in TAB_PAGES:
-    st.session_state["page"] = TAB_PAGES[tab]
 default_page = st.session_state.get("page", page_names[0])
-choice = st.sidebar.radio("导航", page_names, index=page_names.index(default_page))
+if default_page not in page_names:
+    default_page = page_names[0]
+if st.session_state.get("sidebar_navigation") not in page_names:
+    st.session_state["sidebar_navigation"] = default_page
+choice = st.sidebar.radio("导航", page_names, index=page_names.index(default_page), key="sidebar_navigation")
 st.session_state["page"] = choice
+if choice != PAGES["home"]:
+    st.session_state["mobile_add_screen"] = False
 pages[choice]()
 
-active_tab = {"📊 首页概览": "home", "📑 账单列表": "bills", "💳 账户管理": "accounts", "📈 统计分析": "stats"}.get(choice, "home")
-if tab == "add":
-    active_tab = "add"
-st.markdown(
-    f'''<nav class="mobile-bottom-nav" aria-label="底部导航">
-      <a href="?tab=home" class="{'active' if active_tab == 'home' else ''}"><span class="tab-icon">⌂</span>首页</a>
-      <a href="?tab=bills" class="{'active' if active_tab == 'bills' else ''}"><span class="tab-icon">▤</span>账单</a>
-      <a href="?tab=add" class="add {'active' if active_tab == 'add' else ''}"><span class="tab-icon">＋</span>记账</a>
-      <a href="?tab=stats" class="{'active' if active_tab == 'stats' else ''}"><span class="tab-icon">▥</span>统计</a>
-      <a href="?tab=accounts" class="{'active' if active_tab == 'accounts' else ''}"><span class="tab-icon">◉</span>账户</a>
-    </nav>''',
-    unsafe_allow_html=True,
-)
+st.markdown('<div class="mobile-bottom-nav-anchor"></div>', unsafe_allow_html=True)
+mobile_tabs = [
+    ("⌂\n首页", PAGES["home"], False), ("▤\n账单", PAGES["bills"], False),
+    ("＋\n记账", PAGES["home"], True), ("▥\n统计", PAGES["stats"], False),
+    ("◉\n账户", PAGES["accounts"], False),
+]
+tab_cols = st.columns(5)
+for index, (label, page, add_screen) in enumerate(mobile_tabs):
+    tab_cols[index].button(label, key=f"mobile_tab_{index}", on_click=navigate_to, args=(page, add_screen), use_container_width=True)
