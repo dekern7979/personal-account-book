@@ -49,6 +49,23 @@ def require_login() -> None:
 require_login()
 db.init_db()
 
+
+TAB_PAGES = {
+    "home": "📊 首页概览",
+    "bills": "📑 账单列表",
+    "accounts": "💳 账户管理",
+    "stats": "📈 统计分析",
+    "add": "📊 首页概览",
+}
+
+
+def requested_tab() -> str:
+    """Return the tab selected by the mobile bottom navigation."""
+    try:
+        return st.experimental_get_query_params().get("tab", ["home"])[0]
+    except Exception:
+        return "home"
+
 st.markdown(
     """
     <style>
@@ -62,6 +79,91 @@ st.markdown(
     .mobile-category { display: inline-block; width: 23%; margin: 1%; padding: 12px 4px; background: white; border-radius: 16px; text-align: center; font-size: 12px; color: #684938; border: 1px solid #f5e5d9; }
     .mobile-amount { font-size: 28px; font-weight: 800; color: #51382b; }
     .mobile-nav { display: flex; justify-content: space-around; color: #9a6d52; font-size: 12px; padding-top: 12px; border-top: 1px solid #f0dfd4; margin-top: 18px; }
+    .mobile-install-tip { color: #9b7258; font-size: 12px; text-align: center; margin: 18px 4px 8px; }
+    .mobile-bottom-nav {
+      position: fixed; z-index: 999; left: 0; right: 0; bottom: 0;
+      display: flex; align-items: stretch; justify-content: space-around;
+      min-height: calc(64px + env(safe-area-inset-bottom));
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      background: rgba(255,253,249,.94); border-top: 1px solid #efdfd3;
+      box-shadow: 0 -8px 24px rgba(88,58,37,.08); backdrop-filter: blur(16px);
+    }
+    .mobile-bottom-nav a { color: #8e6954; text-decoration: none; font-size: 11px; line-height: 1.25; text-align: center; min-width: 60px; padding: 4px 7px; border-radius: 14px; }
+    .mobile-bottom-nav a .tab-icon { display: block; font-size: 19px; margin-bottom: 2px; }
+    .mobile-bottom-nav a.active, .mobile-bottom-nav a.add { color: #a95738; background: #fff0e5; }
+    .mobile-bottom-nav a.add { margin-top: -21px; min-width: 62px; height: 62px; padding-top: 10px; border: 4px solid #fff8f1; border-radius: 22px; box-shadow: 0 5px 14px rgba(188,99,61,.20); }
+
+    /* iPhone Safari: full-width canvas, Dynamic Island and home-indicator safe areas. */
+    @media (max-width: 899px) {
+      .stApp { background: #fff8f1; }
+      [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] { display: none !important; }
+      .main .block-container {
+        max-width: none !important; min-height: 100dvh;
+        margin: 0 !important;
+        padding: max(24px, env(safe-area-inset-top)) 16px calc(92px + env(safe-area-inset-bottom)) !important;
+      }
+      .mobile-shell { max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+      .mobile-hero { border-radius: 22px; padding: 18px; }
+      .mobile-card { border-radius: 17px; }
+      .stButton > button { min-height: 44px; }
+      [data-testid="stForm"] { border-radius: 20px; padding: 16px 14px; background: #fffdf9; }
+    }
+
+    /* Desktop preview: an interactive iPhone 16 Pro-sized canvas (402 × 874 CSS px). */
+    @media (min-width: 900px) {
+      .stApp { background: radial-gradient(circle at 52% 20%, #fff7ed 0%, #f3eee9 42%, #e8e9ed 100%); }
+      .main .block-container {
+        width: 402px !important;
+        max-width: 402px !important;
+        min-height: 874px;
+        margin: 30px auto 44px !important;
+        padding: 62px 16px 32px !important;
+        background: #fff8f1;
+        border: 8px solid #1c1c1e;
+        border-radius: 54px;
+        box-shadow: 0 26px 72px rgba(29, 25, 20, .34), inset 0 0 0 1px rgba(255,255,255,.18);
+        position: relative;
+        overflow: hidden;
+      }
+      .main .block-container::before {
+        content: "";
+        position: absolute;
+        z-index: 10;
+        top: 14px;
+        left: 50%;
+        width: 126px;
+        height: 34px;
+        transform: translateX(-50%);
+        border-radius: 22px;
+        background: #070707;
+        box-shadow: 0 1px 1px rgba(255,255,255,.12);
+      }
+      .main .block-container::after {
+        content: "iPhone 16 Pro · 轻账本";
+        position: fixed;
+        bottom: 18px;
+        left: calc(50% + 135px);
+        color: #8c8278;
+        font-size: 12px;
+        letter-spacing: .08em;
+      }
+      .mobile-shell {
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+      [data-testid="stSidebar"] { border-right: 1px solid #e8ddd3; }
+      [data-testid="stToolbar"] { visibility: hidden; }
+      .mobile-bottom-nav {
+        left: 50%; right: auto; bottom: 52px; width: 370px;
+        min-height: 64px; padding: 8px 8px;
+        transform: translateX(-50%); border-radius: 22px 22px 42px 42px;
+      }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -103,7 +205,13 @@ def overview():
     expense = sum(row["amount_cents"] for row in rows if row["type"] == 1)
     balance = sum(row["balance_cents"] for row in db.account_balances())
 
+    is_add_screen = requested_tab() == "add"
     st.markdown('<div class="mobile-shell">', unsafe_allow_html=True)
+    if is_add_screen:
+        st.markdown('<div class="mobile-hero"><div class="mobile-title">记一笔</div><div class="mobile-subtitle">随时记录，让每一笔都清楚</div></div>', unsafe_allow_html=True)
+        add_transaction_form("full_screen_add")
+        st.markdown('</div>', unsafe_allow_html=True)
+        return
     st.markdown(f'<div class="mobile-hero"><div class="mobile-title">我的记账本</div><div class="mobile-subtitle">记录每一笔，让生活更有数 · {today:%Y年%m月}</div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="mobile-card"><div style="color:#a47a60;font-size:13px">当前结余</div><div class="mobile-amount">{money(balance)}</div><div style="color:#b28a73;font-size:12px">本月收入 {money(income)}　·　支出 {money(expense)}</div></div>', unsafe_allow_html=True)
     icons = [("🍜", "餐饮", "餐饮美食"), ("🛍️", "购物", "购物消费"), ("🏠", "居家", "居家生活"), ("🚇", "交通", "交通出行"), ("🎮", "娱乐", "休闲娱乐"), ("💊", "医疗", "医疗健康"), ("📚", "学习", "教育学习"), ("➕", "更多", None)]
@@ -127,13 +235,7 @@ def overview():
             st.markdown(f'<div class="mobile-card" style="padding:11px 14px;display:flex;justify-content:space-between"><span>🧾 {row["category"]}<br><small style="color:#aa8976">{row["transaction_date"]} · {row["account_name"]}</small></span><b style="color:{color}">{sign}{money(row["amount_cents"])}</b></div>', unsafe_allow_html=True)
     else:
         st.info("还没有记录，先记下第一笔吧")
-    st.markdown('<div class="mobile-section">导航</div>', unsafe_allow_html=True)
-    nav_cols = st.columns(4)
-    nav_items = [("📒\n账本", "📑 账单列表"), ("📊\n统计", "📈 统计分析"), ("✏️\n记账", "📊 首页概览"), ("👤\n我的", "💳 账户管理")]
-    for index, (label, page) in enumerate(nav_items):
-        if nav_cols[index].button(label, key=f"mobile_nav_{index}", use_container_width=True):
-            st.session_state["page"] = page
-            st.rerun()
+    st.markdown('<div class="mobile-install-tip">iPhone 上请使用 Safari：分享 → 添加到主屏幕，即可像 App 一样快速打开。</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -264,7 +366,24 @@ def settings():
 
 pages = {"📊 首页概览": overview, "📑 账单列表": bills, "💳 账户管理": accounts_page, "📈 统计分析": stats, "⚙️ 设置": settings}
 page_names = list(pages)
+tab = requested_tab()
+if tab in TAB_PAGES:
+    st.session_state["page"] = TAB_PAGES[tab]
 default_page = st.session_state.get("page", page_names[0])
 choice = st.sidebar.radio("导航", page_names, index=page_names.index(default_page))
 st.session_state["page"] = choice
 pages[choice]()
+
+active_tab = {"📊 首页概览": "home", "📑 账单列表": "bills", "💳 账户管理": "accounts", "📈 统计分析": "stats"}.get(choice, "home")
+if tab == "add":
+    active_tab = "add"
+st.markdown(
+    f'''<nav class="mobile-bottom-nav" aria-label="底部导航">
+      <a href="?tab=home" class="{'active' if active_tab == 'home' else ''}"><span class="tab-icon">⌂</span>首页</a>
+      <a href="?tab=bills" class="{'active' if active_tab == 'bills' else ''}"><span class="tab-icon">▤</span>账单</a>
+      <a href="?tab=add" class="add {'active' if active_tab == 'add' else ''}"><span class="tab-icon">＋</span>记账</a>
+      <a href="?tab=stats" class="{'active' if active_tab == 'stats' else ''}"><span class="tab-icon">▥</span>统计</a>
+      <a href="?tab=accounts" class="{'active' if active_tab == 'accounts' else ''}"><span class="tab-icon">◉</span>账户</a>
+    </nav>''',
+    unsafe_allow_html=True,
+)

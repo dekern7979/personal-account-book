@@ -4,3 +4,14 @@ headless = true
 
 [browser]
 gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#C86A45"
+backgroundColor = "#FFF8F1"
+secondaryBackgroundColor = "#FFFDF9"
+textColor = "#51382B"
+borderColor = "#F1DFD2"
+font = "sans-serif"
+baseRadius = "large"
+buttonRadius = "large"
