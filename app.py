@@ -149,6 +149,7 @@ st.markdown(
     @media (max-width: 899px) {
       .stApp { background: #fff8f1; }
       [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] { display: none !important; }
+      [data-testid="stStatusWidget"], [data-testid="stAppDeployButton"], .stDeployButton { display: none !important; }
       .main .block-container {
         max-width: none !important; min-height: 100dvh;
         margin: 0 !important;
