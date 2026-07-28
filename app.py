@@ -77,20 +77,22 @@ st.markdown(
     .mobile-nav { display: flex; justify-content: space-around; color: #9a6d52; font-size: 12px; padding-top: 12px; border-top: 1px solid #f0dfd4; margin-top: 18px; }
     .mobile-install-tip { color: #9b7258; font-size: 12px; text-align: center; margin: 18px 4px 8px; }
     /* The marker lives inside Streamlit's element container; fix its next container. */
-    .element-container:has(.mobile-bottom-nav-anchor) + .element-container {
-      position: fixed; z-index: 999; left: 0; right: 0; bottom: 0;
-      display: flex; align-items: stretch; justify-content: space-around;
+    .mobile-bottom-nav-anchor { display: none; }
+    .element-container:has(.mobile-bottom-nav-anchor) + div {
+      position: fixed !important; z-index: 999 !important; left: 0; right: 0; bottom: 0;
       min-height: calc(64px + env(safe-area-inset-bottom));
       padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
       background: rgba(255,253,249,.94); border-top: 1px solid #efdfd3;
       box-shadow: 0 -8px 24px rgba(88,58,37,.08); backdrop-filter: blur(16px);
     }
-    .element-container:has(.mobile-bottom-nav-anchor) + .element-container .stButton button {
+    .element-container:has(.mobile-bottom-nav-anchor) + div [data-testid="stHorizontalBlock"] { display: flex !important; flex-flow: row nowrap !important; gap: 4px !important; }
+    .element-container:has(.mobile-bottom-nav-anchor) + div [data-testid="column"] { min-width: 0 !important; width: 20% !important; flex: 1 1 20% !important; }
+    .element-container:has(.mobile-bottom-nav-anchor) + div .stButton button {
       width: 100%; min-height: 48px; padding: 2px 0; border: 0; background: transparent;
       color: #737373; font-size: 11px; line-height: 1.25; box-shadow: none; border-radius: 18px;
     }
-    .element-container:has(.mobile-bottom-nav-anchor) + .element-container .stButton button[kind="primary"] { background: #c8f7e8; color: #087a6e; font-weight: 700; }
-    .element-container:has(.mobile-bottom-nav-anchor) + .element-container .stButton button:hover { color: #087a6e; background: #e7faf3; }
+    .element-container:has(.mobile-bottom-nav-anchor) + div .stButton button[kind="primary"] { background: #c8f7e8; color: #087a6e; font-weight: 700; }
+    .element-container:has(.mobile-bottom-nav-anchor) + div .stButton button:hover { color: #087a6e; background: #e7faf3; }
 
     /* iPhone Safari: full-width canvas, Dynamic Island and home-indicator safe areas. */
     @media (max-width: 899px) {
@@ -157,7 +159,7 @@ st.markdown(
       }
       [data-testid="stSidebar"] { border-right: 1px solid #e8ddd3; }
       [data-testid="stToolbar"] { visibility: hidden; }
-      .element-container:has(.mobile-bottom-nav-anchor) + .element-container {
+      .element-container:has(.mobile-bottom-nav-anchor) + div {
         left: 50%; right: auto; bottom: 52px; width: 370px;
         min-height: 64px; padding: 8px 8px;
         transform: translateX(-50%); border-radius: 22px 22px 42px 42px;
