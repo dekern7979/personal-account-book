@@ -76,23 +76,32 @@ st.markdown(
     .mobile-amount { font-size: 28px; font-weight: 800; color: #51382b; }
     .mobile-nav { display: flex; justify-content: space-around; color: #9a6d52; font-size: 12px; padding-top: 12px; border-top: 1px solid #f0dfd4; margin-top: 18px; }
     .mobile-install-tip { color: #9b7258; font-size: 12px; text-align: center; margin: 18px 4px 8px; }
-    /* The marker lives inside Streamlit's element container; fix its next container. */
-    .mobile-bottom-nav-anchor { display: none; }
-    .element-container:has(.mobile-bottom-nav-anchor) + div {
-      position: fixed !important; z-index: 999 !important; left: 0; right: 0; bottom: 0;
-      min-height: calc(64px + env(safe-area-inset-bottom));
-      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-      background: rgba(255,253,249,.94); border-top: 1px solid #efdfd3;
-      box-shadow: 0 -8px 24px rgba(88,58,37,.08); backdrop-filter: blur(16px);
+    /* Fixed mobile tab bar. Each native Streamlit button gets a dedicated slot. */
+    .mobile-bottom-nav-anchor, .bottom-tab-slot { display: none; }
+    body:has(.bottom-tab-slot)::before {
+      content: ""; position: fixed; z-index: 990; left: 0; right: 0; bottom: 0;
+      height: calc(70px + env(safe-area-inset-bottom));
+      background: rgba(255,253,249,.97); border-top: 1px solid #eee5de;
+      box-shadow: 0 -8px 28px rgba(60,45,35,.10); backdrop-filter: blur(18px);
+      pointer-events: none;
     }
-    .element-container:has(.mobile-bottom-nav-anchor) + div [data-testid="stHorizontalBlock"] { display: flex !important; flex-flow: row nowrap !important; gap: 4px !important; }
-    .element-container:has(.mobile-bottom-nav-anchor) + div [data-testid="column"] { min-width: 0 !important; width: 20% !important; flex: 1 1 20% !important; }
-    .element-container:has(.mobile-bottom-nav-anchor) + div .stButton button {
-      width: 100%; min-height: 48px; padding: 2px 0; border: 0; background: transparent;
-      color: #737373; font-size: 11px; line-height: 1.25; box-shadow: none; border-radius: 18px;
+    [data-testid="column"]:has(.bottom-tab-slot) {
+      position: fixed !important; z-index: 991 !important; bottom: calc(8px + env(safe-area-inset-bottom));
+      width: 20% !important; min-width: 0 !important; padding: 0 4px !important;
     }
-    .element-container:has(.mobile-bottom-nav-anchor) + div .stButton button[kind="primary"] { background: #c8f7e8; color: #087a6e; font-weight: 700; }
-    .element-container:has(.mobile-bottom-nav-anchor) + div .stButton button:hover { color: #087a6e; background: #e7faf3; }
+    [data-testid="column"]:has(.tab-slot-0) { left: 0; }
+    [data-testid="column"]:has(.tab-slot-1) { left: 20%; }
+    [data-testid="column"]:has(.tab-slot-2) { left: 40%; }
+    [data-testid="column"]:has(.tab-slot-3) { left: 60%; }
+    [data-testid="column"]:has(.tab-slot-4) { left: 80%; }
+    [data-testid="column"]:has(.bottom-tab-slot) .stButton button {
+      width: 100%; min-height: 52px; padding: 2px 0; border: 0; background: transparent;
+      color: #84766d; font-size: 11px; line-height: 1.35; box-shadow: none; border-radius: 18px;
+    }
+    [data-testid="column"]:has(.bottom-tab-slot) .stButton button[kind="primary"] {
+      background: #d8f5ed; color: #127d70; font-weight: 700; border-radius: 18px;
+    }
+    [data-testid="column"]:has(.bottom-tab-slot) .stButton button:hover { color: #127d70; background: #eefaf6; }
 
     /* iPhone Safari: full-width canvas, Dynamic Island and home-indicator safe areas. */
     @media (max-width: 899px) {
@@ -159,11 +168,13 @@ st.markdown(
       }
       [data-testid="stSidebar"] { border-right: 1px solid #e8ddd3; }
       [data-testid="stToolbar"] { visibility: hidden; }
-      .element-container:has(.mobile-bottom-nav-anchor) + div {
-        left: 50%; right: auto; bottom: 52px; width: 370px;
-        min-height: 64px; padding: 8px 8px;
-        transform: translateX(-50%); border-radius: 22px 22px 42px 42px;
-      }
+      body:has(.bottom-tab-slot)::before { left: calc(50% - 185px); right: auto; bottom: 52px; width: 370px; height: 70px; border-radius: 22px 22px 42px 42px; }
+      [data-testid="column"]:has(.bottom-tab-slot) { bottom: 60px; width: 74px !important; }
+      [data-testid="column"]:has(.tab-slot-0) { left: calc(50% - 185px); }
+      [data-testid="column"]:has(.tab-slot-1) { left: calc(50% - 111px); }
+      [data-testid="column"]:has(.tab-slot-2) { left: calc(50% - 37px); }
+      [data-testid="column"]:has(.tab-slot-3) { left: calc(50% + 37px); }
+      [data-testid="column"]:has(.tab-slot-4) { left: calc(50% + 111px); }
     }
     </style>
     """,
@@ -389,4 +400,5 @@ mobile_tabs = [
 active_tab = 2 if st.session_state.get("mobile_add_screen") else {PAGES["home"]: 0, PAGES["bills"]: 1, PAGES["stats"]: 3, PAGES["accounts"]: 4}.get(choice, 0)
 tab_cols = st.columns(5)
 for index, (label, page, add_screen) in enumerate(mobile_tabs):
+    tab_cols[index].markdown(f'<span class="bottom-tab-slot tab-slot-{index}"></span>', unsafe_allow_html=True)
     tab_cols[index].button(label, key=f"mobile_tab_{index}", on_click=navigate_to, args=(page, add_screen), type="primary" if index == active_tab else "secondary", use_container_width=True)
