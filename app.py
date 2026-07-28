@@ -62,6 +62,52 @@ def navigate_to(page: str, add_screen: bool = False) -> None:
     st.session_state["sidebar_navigation"] = page
     st.session_state["mobile_add_screen"] = add_screen
 
+
+MOBILE_NAV_COMPONENT = None
+if hasattr(st.components, "v2"):
+    MOBILE_NAV_COMPONENT = st.components.v2.component(
+        "account_book_mobile_navigation",
+        html="""
+        <nav class="tabbar" aria-label="底部导航">
+          <button data-tab="home"><span>▤</span><b>账本</b></button>
+          <button data-tab="bills"><span>≡</span><b>账单</b></button>
+          <button data-tab="add" class="add"><span>＋</span><b>记账</b></button>
+          <button data-tab="stats"><span>▥</span><b>统计</b></button>
+          <button data-tab="accounts"><span>●</span><b>我的</b></button>
+        </nav>
+        """,
+        css="""
+        .tabbar { box-sizing:border-box; display:flex; align-items:center; gap:4px; width:100%; height:72px; padding:8px 10px; background:rgba(255,253,249,.98); border:1px solid #eee4dc; border-radius:24px 24px 34px 34px; box-shadow:0 8px 28px rgba(62,45,35,.16); font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+        button { flex:1; min-width:0; height:52px; border:0; border-radius:16px; background:transparent; color:#84766d; cursor:pointer; font:inherit; font-size:11px; line-height:1.25; }
+        button span, button b { display:block; } button span { font-size:22px; line-height:24px; font-weight:500; } button b { margin-top:2px; font-weight:600; white-space:nowrap; }
+        button.active { background:#d8f5ed; color:#127d70; } button.add span { font-size:27px; line-height:22px; }
+        button:active { transform:scale(.96); }
+        """,
+        js="""
+        export default function(component) {
+          const { data, parentElement, setTriggerValue } = component
+          const isDesktop = window.matchMedia("(min-width: 900px)").matches
+          Object.assign(parentElement.style, {
+            position: "fixed", zIndex: "1000", bottom: isDesktop ? "52px" : "calc(8px + env(safe-area-inset-bottom))",
+            left: isDesktop ? "50%" : "8px", right: isDesktop ? "auto" : "8px",
+            width: isDesktop ? "370px" : "auto", transform: isDesktop ? "translateX(-50%)" : "none"
+          })
+          parentElement.querySelectorAll("button").forEach((button) => {
+            button.classList.toggle("active", button.dataset.tab === (data?.active || "home"))
+            button.onclick = () => setTriggerValue("navigate", button.dataset.tab)
+          })
+        }
+        """,
+    )
+
+
+def handle_mobile_navigation() -> None:
+    payload = st.session_state.get("mobile_navigation", {})
+    tab = payload.get("navigate") if isinstance(payload, dict) else None
+    target = {"home": (PAGES["home"], False), "bills": (PAGES["bills"], False), "add": (PAGES["home"], True), "stats": (PAGES["stats"], False), "accounts": (PAGES["accounts"], False)}.get(tab)
+    if target:
+        navigate_to(*target)
+
 st.markdown(
     """
     <style>
@@ -391,14 +437,9 @@ if choice != PAGES["home"]:
     st.session_state["mobile_add_screen"] = False
 pages[choice]()
 
-st.markdown('<div class="mobile-bottom-nav-anchor"></div>', unsafe_allow_html=True)
-mobile_tabs = [
-    ("▤\n账本", PAGES["home"], False), ("≡\n账单", PAGES["bills"], False),
-    ("＋\n记账", PAGES["home"], True), ("▥\n统计", PAGES["stats"], False),
-    ("●\n我的", PAGES["accounts"], False),
-]
 active_tab = 2 if st.session_state.get("mobile_add_screen") else {PAGES["home"]: 0, PAGES["bills"]: 1, PAGES["stats"]: 3, PAGES["accounts"]: 4}.get(choice, 0)
-tab_cols = st.columns(5)
-for index, (label, page, add_screen) in enumerate(mobile_tabs):
-    tab_cols[index].markdown(f'<span class="bottom-tab-slot tab-slot-{index}"></span>', unsafe_allow_html=True)
-    tab_cols[index].button(label, key=f"mobile_tab_{index}", on_click=navigate_to, args=(page, add_screen), type="primary" if index == active_tab else "secondary", use_container_width=True)
+active_name = ["home", "bills", "add", "stats", "accounts"][active_tab]
+if MOBILE_NAV_COMPONENT:
+    MOBILE_NAV_COMPONENT(key="mobile_navigation", data={"active": active_name}, on_navigate_change=handle_mobile_navigation, height=72)
+else:
+    st.warning("当前本地 Streamlit 版本较旧；线上版本会显示五按钮底部导航。")
