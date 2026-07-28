@@ -77,22 +77,18 @@ if hasattr(st.components, "v2"):
         </nav>
         """,
         css="""
-        .tabbar { box-sizing:border-box; display:flex; align-items:center; gap:4px; width:100%; height:72px; padding:8px 10px; background:rgba(255,253,249,.98); border:1px solid #eee4dc; border-radius:24px 24px 34px 34px; box-shadow:0 8px 28px rgba(62,45,35,.16); font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+        .tabbar { box-sizing:border-box; position:fixed; z-index:1000; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom)); display:flex; align-items:center; gap:4px; width:auto; height:72px; padding:8px 10px; background:rgba(255,253,249,.98); border:1px solid #eee4dc; border-radius:24px 24px 34px 34px; box-shadow:0 8px 28px rgba(62,45,35,.16); font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
         button { flex:1; min-width:0; height:52px; border:0; border-radius:16px; background:transparent; color:#84766d; cursor:pointer; font:inherit; font-size:11px; line-height:1.25; }
         button span, button b { display:block; } button span { font-size:22px; line-height:24px; font-weight:500; } button b { margin-top:2px; font-weight:600; white-space:nowrap; }
         button.active { background:#d8f5ed; color:#127d70; } button.add span { font-size:27px; line-height:22px; }
         button:active { transform:scale(.96); }
+        @media (min-width:900px) { .tabbar { left:50%; right:auto; bottom:52px; width:370px; transform:translateX(-50%); } }
         """,
         js="""
         export default function(component) {
           const { data, parentElement, setTriggerValue } = component
-          const isDesktop = window.matchMedia("(min-width: 900px)").matches
-          Object.assign(parentElement.style, {
-            position: "fixed", zIndex: "1000", bottom: isDesktop ? "52px" : "calc(8px + env(safe-area-inset-bottom))",
-            left: isDesktop ? "50%" : "8px", right: isDesktop ? "auto" : "8px",
-            width: isDesktop ? "370px" : "auto", transform: isDesktop ? "translateX(-50%)" : "none"
-          })
-          parentElement.querySelectorAll("button").forEach((button) => {
+          const root = parentElement || document
+          root.querySelectorAll("button").forEach((button) => {
             button.classList.toggle("active", button.dataset.tab === (data?.active || "home"))
             button.onclick = () => setTriggerValue("navigate", button.dataset.tab)
           })
